@@ -1,8 +1,7 @@
 # sql_exercise_dataprojects
 ENGETO SQL DATA ANALYSIS PROJECT DESCRIPTION
 
-In English:
-Project Assignment: Salary and Food Prices Data Analysis Using SQL
+IN ENGLISH: Project Assignment: Salary and Food Prices Data Analysis Using SQL
 
 In your analytical department at an independent company focusing on the standard of living of citizens, you have agreed to attempt to answer a few defined research questions addressing the availability of basic food items to the general public. Your colleagues have already outlined the key questions that you will try to answer and provide this information to the public relations department. The PR department will present the results at an upcoming conference focused on this area.
 
@@ -44,8 +43,9 @@ Create a repository on your GitHub account (can be private) where you store all 
 
 Do not modify data in primary tables! If transformation of values is needed, do it in tables or views that you create.
 
-In Czech:
-Zadání projektu: Data o mzdách a cenách potravin a jejich zpracování pomocí SQL
+
+
+IN CZECH: Zadání projektu: Data o mzdách a cenách potravin a jejich zpracování pomocí SQL
 
 Na vašem analytickém oddělení nezávislé společnosti, která se zabývá životní úrovní občanů, jste se dohodli, 
 že se pokusíte odpovědět na pár definovaných výzkumných otázek, které adresují dostupnost základních potravin široké veřejnosti. 
