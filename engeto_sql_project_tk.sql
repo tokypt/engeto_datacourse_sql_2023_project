@@ -22,12 +22,12 @@ LEFT JOIN czechia_payroll_value_type AS cpvt
 -- czechia_price_recount
 CREATE OR REPLACE VIEW czechia_price_recount AS
 SELECT 
-	round(avg(cp.value), 2) AS avg_value
-	, cp.category_code 
-	, cpc.name
-	, cpc.price_value
-	, cpc.price_unit
-	, YEAR(cp.date_from) AS date_int
+	round(avg(cp.value), 2) AS commodity_value
+	, cp.category_code AS commodity_code
+	, cpc.name AS commodity_name
+	, cpc.price_value AS commodity_volume
+	, cpc.price_unit AS commodity_volume_unit
+	, YEAR(cp.date_from) AS price_year
 	, CASE 
 			WHEN MONTH(cp.date_from) >= 10 THEN 4
 			WHEN MONTH(cp.date_from) >= 7 THEN 3
@@ -38,15 +38,19 @@ SELECT
 FROM czechia_price AS cp
 LEFT JOIN czechia_price_category AS cpc 	
 	ON cp.category_code = cpc.code
-GROUP BY category_code, date_int, price_quarter
+GROUP BY commodity_code, price_year, price_quarter
 
 -- combining views
+CREATE OR REPLACE TABLE t_tomas_kypta_project_SQL_primary_final AS 
 SELECT cpf.*, cpr.* 
 FROM czechia_payroll_filled AS cpf 
 LEFT JOIN czechia_price_recount AS cpr
-	ON cpf.payroll_year = cpr.date_int 
+	ON cpf.payroll_year = cpr.price_year
 	AND cpf.payroll_quarter = cpr.price_quarter;
 
-/*
- * Rostou v průběhu let mzdy ve všech odvětvích, nebo v některých klesají?
- */
+-- 1. Rostou v průběhu let mzdy ve všech odvětvích, nebo v některých klesají?
+SELECT 
+FROM t_tomas_kypta_project_sql_primary_final AS ttkpspf 
+GROUP BY industry
+
+
