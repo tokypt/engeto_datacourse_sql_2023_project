@@ -285,6 +285,7 @@ SELECT
 	, dat2.YEAR AS prev_year
 	, dat.country 
 	, dat.GDP
+	, round( ( round(AVG(dat.GDP),2) - dat2.GDP ) / dat2.GDP * 100, 2 ) as gdp_growth
 FROM t_tomas_kypta_project_sql_secondary_final AS dat
 LEFT JOIN 
 			(SELECT
