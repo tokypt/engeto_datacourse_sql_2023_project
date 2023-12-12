@@ -77,13 +77,13 @@ GROUP BY
 	, year;
 
 /* 
- * Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné 
+ * 2. Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné 
  * období v dostupných datech cen a mezd?
  */
+-- searching for bread and milk codes
 SELECT *
 FROM t_tomas_kypta_project_sql_primary_final
 WHERE value_name LIKE '%chléb%';
-
 SELECT *
 FROM t_tomas_kypta_project_sql_primary_final
 WHERE value_name LIKE '%mléko%';
@@ -165,32 +165,13 @@ WHERE
 GROUP BY 'year', quarter;
 
 /*
- * Která kategorie potravin zdražuje nejpomaleji 
+ * 3. Která kategorie potravin zdražuje nejpomaleji 
  * (je u ní nejnižší percentuální meziroční nárůst)?
  */
 
 SELECT DISTINCT value_code
 FROM t_tomas_kypta_project_sql_primary_final AS ttkpspf
 WHERE value_code NOT IN (316, 5958);
-
-SELECT
-	value
-	, LAG(value) OVER (PARTITION BY value_name ORDER BY year) AS prev_year_value
-   , round((value - LAG(value) OVER (PARTITION BY value_name ORDER BY year))
-   	/ LAG(value) OVER (PARTITION BY value_name ORDER BY year) * 100, 2)  AS price_growth_percent
-	, value_name
-	, unit
-	, industry_or_measurement
-	, year
-FROM
-	t_tomas_kypta_project_sql_primary_final AS dat
-WHERE
-	value_code NOT IN (316, 5958)
-	AND industry_or_measurement IS NOT NULL
-GROUP BY 
-	value_name
-	, year;
-
 
 SELECT round(sum(growth_percent),2) AS avg_growth, MIN(growth_percent) min_year_growth, value_name, unit, industry_or_measurement
 FROM (
@@ -233,31 +214,11 @@ ORDER BY avg_growth;
 	
 
 /*
- * Existuje rok, ve kterém byl meziroční nárůst cen potravin 
+ * 4. Existuje rok, ve kterém byl meziroční nárůst cen potravin 
  * výrazně vyšší než růst mezd (větší než 10 %)?
  */
-SELECT
-	value
-	, LAG(value) OVER (PARTITION BY value_name ORDER BY year) AS prev_year_value
-   , round((value - LAG(value) OVER (PARTITION BY value_name ORDER BY year))
-   	/ LAG(value) OVER (PARTITION BY value_name ORDER BY year) * 100, 2)  AS price_growth_percent
-	, value_name
-	, unit
-	, industry_or_measurement
-	, year
-FROM
-	t_tomas_kypta_project_sql_primary_final AS dat
-WHERE
-	value_code NOT IN (316, 5958)
-	AND industry_or_measurement IS NOT NULL
-GROUP BY 
-	value_name
-	, year;
-
-
-SELECT MAX(growth_percent) AS max_year_growth, value_name, unit, industry_or_measurement, year
-FROM (
-		SELECT
+SELECT avg(growth_percent) AS fprice_growth_percent, year
+FROM (SELECT
 			 round(AVG(dat.value),2) AS avg_value
 			, dat2.year_value
 			, round( ( round(AVG(dat.value),2) - dat2.year_value ) / dat2.year_value * 100, 2 ) as growth_percent
@@ -286,28 +247,64 @@ FROM (
 		WHERE
 			dat.value_code NOT IN (316, 5958)
 			AND dat.year >= 2007
-		GROUP BY dat.`year`, dat.value_name
-	) AS prices
-ORDER BY MAX(growth_percent) DESC;
+		GROUP BY dat.`year`, dat.value_name) AS food_prices
+GROUP BY YEAR
+ORDER BY fprice_growth_percent DESC;
 
 
 
+/*
+ * Vytvoření tabulky t_tomas_kypta_project_SQL_secondary_final 
+ * (pro dodatečná data o dalších evropských státech).
+ */
+CREATE OR REPLACE TABLE t_tomas_kypta_project_SQL_secondary_final AS
+SELECT dat.*, eco.country, eco.GDP
+FROM t_tomas_kypta_project_sql_primary_final AS dat
+LEFT JOIN (SELECT country, GDP, year
+				FROM economies
+				WHERE country LIKE '%czech%') AS eco
+	ON dat.year = eco.year;
 
 
-SELECT
-	value
-	, LAG(value) OVER (PARTITION BY industry_or_measurement ORDER BY year) AS prev_year_value
-   , value - LAG(value) OVER (PARTITION BY industry_or_measurement ORDER BY year) AS yearly_difference
-	, value_name
-	, unit
-	, industry_or_measurement
-	, year
-FROM
-	t_tomas_kypta_project_sql_primary_final AS dat
+/*
+ * 5. Má výška HDP vliv na změny ve mzdách a cenách potravin? 
+ * Neboli, pokud HDP vzroste výrazněji v jednom roce, 
+ * projeví se to na cenách potravin či mzdách ve stejném nebo 
+ * následujícím roce výraznějším růstem?
+ */
+
+
+SELECT 
+	round(AVG(dat.value),2) AS avg_value
+	, dat2.year_value
+	, round( ( round(AVG(dat.value),2) - dat2.year_value ) / dat2.year_value * 100, 2 ) as growth_percent
+	, dat.value_name
+	, dat.unit
+	, dat.industry_or_measurement
+	, dat.year
+	, dat2.YEAR AS prev_year
+	, dat.country 
+	, dat.GDP
+FROM t_tomas_kypta_project_sql_secondary_final AS dat
+LEFT JOIN 
+			(SELECT
+				round(avg(value),2) AS year_value
+				, value_name
+				, unit
+				, industry_or_measurement
+				, YEAR
+				, country
+				, GDP
+			FROM
+				t_tomas_kypta_project_sql_secondary_final
+			WHERE
+				value_code != 5958
+				AND industry_or_measurement IS NOT NULL
+				GROUP BY year,value_name
+			) AS dat2
+	ON dat.value_name = dat2.value_name
+	AND dat.year = dat2.year + 1
 WHERE
-	value_code = 5958
-	AND industry_or_measurement IS NOT NULL
-GROUP BY
-	industry_or_measurement
-	, year;	
-	
+	dat.value_code != 5958
+	AND dat.year >= 2007
+GROUP BY dat.`year`, dat.value_name;
