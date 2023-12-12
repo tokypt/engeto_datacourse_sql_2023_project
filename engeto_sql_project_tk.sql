@@ -141,7 +141,7 @@ WHERE
 	year = 2006 
 	AND quarter = 1
 	AND value_code = 5958
-GROUP BY YEAR AND quarter
+GROUP BY 'year', quarter
 UNION
 SELECT 
 	round(avg(value) / (SELECT value FROM t_tomas_kypta_project_sql_primary_final
@@ -162,7 +162,7 @@ WHERE
 	year = 2018
 	AND quarter = 2
 	AND value_code = 5958
-GROUP BY year AND quarter;
+GROUP BY 'year', quarter;
 
 /*
  * Která kategorie potravin zdražuje nejpomaleji 
@@ -171,7 +171,128 @@ GROUP BY year AND quarter;
 
 SELECT DISTINCT value_code
 FROM t_tomas_kypta_project_sql_primary_final AS ttkpspf
-WHERE value_code NOT IN (316, 5958)
+WHERE value_code NOT IN (316, 5958);
+
+SELECT
+	value
+	, LAG(value) OVER (PARTITION BY value_name ORDER BY year) AS prev_year_value
+   , round((value - LAG(value) OVER (PARTITION BY value_name ORDER BY year))
+   	/ LAG(value) OVER (PARTITION BY value_name ORDER BY year) * 100, 2)  AS price_growth_percent
+	, value_name
+	, unit
+	, industry_or_measurement
+	, year
+FROM
+	t_tomas_kypta_project_sql_primary_final AS dat
+WHERE
+	value_code NOT IN (316, 5958)
+	AND industry_or_measurement IS NOT NULL
+GROUP BY 
+	value_name
+	, year;
+
+
+SELECT round(sum(growth_percent),2) AS avg_growth, MIN(growth_percent) min_year_growth, value_name, unit, industry_or_measurement
+FROM (
+		SELECT
+			 round(AVG(dat.value),2) AS avg_value
+			, dat2.year_value
+			, round( ( round(AVG(dat.value),2) - dat2.year_value ) / dat2.year_value * 100, 2 ) as growth_percent
+			, dat.value_name
+			, dat.unit
+			, dat.industry_or_measurement
+			, dat.year
+			, dat2.YEAR AS prev_year
+		FROM
+			t_tomas_kypta_project_sql_primary_final AS dat
+		LEFT JOIN 
+			(SELECT
+				round(avg(value),2) AS year_value
+				, value_name
+				, unit
+				, industry_or_measurement
+				, year
+			FROM
+				t_tomas_kypta_project_sql_primary_final
+			WHERE
+				value_code NOT IN (316, 5958)
+				AND industry_or_measurement IS NOT NULL
+				GROUP BY YEAR,value_name) AS dat2
+			ON dat.value_name = dat2.value_name
+			AND dat.year = dat2.year + 1
+		WHERE
+			dat.value_code NOT IN (316, 5958)
+			AND dat.year >= 2007
+		GROUP BY dat.`year`, dat.value_name
+	) AS prices
+GROUP BY value_name
+ORDER BY avg_growth;
+-- Banány žluté
+
+-- round( ( e.GDP - e2.GDP ) / e2.GDP * 100, 2 ) as GDP_growth	
+	
+
+/*
+ * Existuje rok, ve kterém byl meziroční nárůst cen potravin 
+ * výrazně vyšší než růst mezd (větší než 10 %)?
+ */
+SELECT
+	value
+	, LAG(value) OVER (PARTITION BY value_name ORDER BY year) AS prev_year_value
+   , round((value - LAG(value) OVER (PARTITION BY value_name ORDER BY year))
+   	/ LAG(value) OVER (PARTITION BY value_name ORDER BY year) * 100, 2)  AS price_growth_percent
+	, value_name
+	, unit
+	, industry_or_measurement
+	, year
+FROM
+	t_tomas_kypta_project_sql_primary_final AS dat
+WHERE
+	value_code NOT IN (316, 5958)
+	AND industry_or_measurement IS NOT NULL
+GROUP BY 
+	value_name
+	, year;
+
+
+SELECT MAX(growth_percent) AS max_year_growth, value_name, unit, industry_or_measurement, year
+FROM (
+		SELECT
+			 round(AVG(dat.value),2) AS avg_value
+			, dat2.year_value
+			, round( ( round(AVG(dat.value),2) - dat2.year_value ) / dat2.year_value * 100, 2 ) as growth_percent
+			, dat.value_name
+			, dat.unit
+			, dat.industry_or_measurement
+			, dat.year
+			, dat2.YEAR AS prev_year
+		FROM
+			t_tomas_kypta_project_sql_primary_final AS dat
+		LEFT JOIN 
+			(SELECT
+				round(avg(value),2) AS year_value
+				, value_name
+				, unit
+				, industry_or_measurement
+				, year
+			FROM
+				t_tomas_kypta_project_sql_primary_final
+			WHERE
+				value_code NOT IN (316, 5958)
+				AND industry_or_measurement IS NOT NULL
+				GROUP BY YEAR,value_name) AS dat2
+			ON dat.value_name = dat2.value_name
+			AND dat.year = dat2.year + 1
+		WHERE
+			dat.value_code NOT IN (316, 5958)
+			AND dat.year >= 2007
+		GROUP BY dat.`year`, dat.value_name
+	) AS prices
+ORDER BY MAX(growth_percent) DESC;
+
+
+
+
 
 SELECT
 	value
@@ -184,16 +305,9 @@ SELECT
 FROM
 	t_tomas_kypta_project_sql_primary_final AS dat
 WHERE
-	(SELECT DISTINCT(value_code)
+	value_code = 5958
 	AND industry_or_measurement IS NOT NULL
 GROUP BY
-	industry_or_measuremen
-	, year;
-
-	
-	
-	
-	
-	
-	
+	industry_or_measurement
+	, year;	
 	
